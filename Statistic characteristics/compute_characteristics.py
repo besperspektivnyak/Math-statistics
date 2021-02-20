@@ -5,7 +5,7 @@ from scipy import stats as stats
 
 distributions = (stats.norm, (0, 1), "Normal"), (stats.cauchy, (0, 1), "Cauchy"), \
                 (stats.laplace, (0, 1 / math.sqrt(2)), "Laplace"), \
-                (stats.uniform, (-math.sqrt(3), math.sqrt(3)), "Uniform"), (stats.poisson, [10], "Poisson")
+                (stats.uniform, (-math.sqrt(3), 2*math.sqrt(3)), "Uniform"), (stats.poisson, [10], "Poisson")
 
 
 def generate_selection(distribution_params, size):
@@ -58,9 +58,46 @@ def characteristic_calc(selection):
     mean_value = mean(selection)
     median_value = median(selection)
     z_R = halfsum_extreme_elems(selection)
-    z_Q = halfsum_extreme_elems(selection)
-    z_tr = halfsum_extreme_elems(selection)
+    z_Q = halfsum_quartiles(selection)
+    z_tr = truncated_mean(selection)
     return mean_value, median_value, z_R, z_Q, z_tr
+
+
+def estimation_for_big_num(max_value, min_value):
+    if int(max_value) == int(min_value):
+        return int(max_value)
+    else:
+        return "-"
+
+
+def estimation(max_value, min_value):
+    if max_value > 1:
+        return estimation_for_big_num(max_value, min_value)
+    value = max_value - min_value
+    cases = [0.1, 0.01, 0.001, 0.0001, 0.00001, 0.000001, 1]
+    if cases[0] < value:
+        return int(0)
+    elif cases[0] > value > cases[1]:
+        return ('%.2f' % max_value)[:-1]
+    elif cases[1] > value > cases[2]:
+        return ('%.3f' % max_value)[:-1]
+    elif cases[2] > value > cases[3]:
+        return ('%.4f' % max_value)[:-1]
+    elif cases[3] > value > cases[4]:
+        return ('%.5f' % max_value)[:-1]
+    elif cases[4] > value > cases[5]:
+        return ('%.6f' % max_value)[:-1]
+
+
+def mean_dispersion_calc(selection):
+    mean_value = mean(selection)
+    dispersion_value = np.var(selection)
+    sqrt_dis = math.sqrt(dispersion_value)
+    min_mean = mean_value - sqrt_dis
+    max_mean = mean_value + sqrt_dis
+    return float("{0:.4f}".format(mean_value)), float("{0:.4f}".format(dispersion_value)), \
+           float("{0:.4f}".format(max_mean)), float("{0:.4f}".format(min_mean)), \
+           estimation(max_mean, min_mean)
 
 
 def research(repetitions=1000, sizes=[10, 100, 1000]):
@@ -87,48 +124,15 @@ def research(repetitions=1000, sizes=[10, 100, 1000]):
         write_csv(results, key)
 
 
-def estimation_for_big_num(max_value, min_value):
-    if int(max_value) == int (min_value):
-        return int(max_value)
-    else:
-        return 0
-
-
-def estimation(max_value, min_value):
-    if max_value > 1:
-        return estimation_for_big_num(max_value, min_value)
-    value = max_value - min_value
-    cases = [0.1, 0.01, 0.001, 0.0001, 0.00001, 0.000001, 1]
-    if cases[0] < value:
-        return 0
-    elif cases[0] > value > cases[1]:
-        return ('%.2f' % max_value)[:-1]
-    elif cases[1] > value > cases[2]:
-        return ('%.3f' % max_value)[:-1]
-    elif cases[2] > value > cases[3]:
-        return ('%.4f' % max_value)[:-1]
-    elif cases[3] > value > cases[4]:
-        return ('%.5f' % max_value)[:-1]
-    elif cases[4] > value > cases[5]:
-        return ('%.6f' % max_value)[:-1]
-
-
-def mean_dispersion_calc(selection):
-    mean_value = mean(selection)
-    dispersion_value = np.var(selection)
-    sqrt_dis = math.sqrt(dispersion_value)
-    min_mean = mean_value - sqrt_dis
-    max_mean = mean_value + sqrt_dis
-    return float("{0:.4f}".format(mean_value)), float("{0:.4f}".format(dispersion_value)), estimation(max_mean, min_mean)
-
-
 def write_csv(res, tablename):
-    results = pd.DataFrame(res[tablename]).T.round(4)
+    results = pd.DataFrame(res[tablename]).T
     results.rename(columns={0: "mean(x)", 1: "median(x)", 2: "zR", 3: "zQ", 4: "ztr"}, inplace=True)
-    results.index = ["E(x)", "D(x)", "Estimation"]
-    results.to_csv(tablename + ".csv", sep=",", float_format="%.4f", index=True)
+    results.index = ["E(x)", "D(x)", "E + sqrt(D)", "E - sqrt(D)", "Estimation"]
+    results.to_csv(tablename + ".csv", sep=",")
     print(results)
 
 
 # main
 research()
+#print(estimation(0.3045, -0.3304))
+
